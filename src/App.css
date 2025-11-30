@@ -1130,3 +1130,16 @@
   color: rgba(0,0,0,0.65);
   font-size: 12px;
 }
+.time-select {
+  min-width: 100px;
+}
+
+.edit-time-select {
+  padding: 8px 12px;
+  border: 2px solid var(--primary);
+  border-radius: var(--radius);
+  background: var(--white);
+  color: var(--gray-900);
+  font-size: 13px;
+  cursor: pointer;
+}

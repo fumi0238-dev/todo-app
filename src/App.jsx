@@ -52,6 +52,58 @@ function App() {
   
   const editingRef = useRef(null)
 
+  const timeOptions = [
+    { value: '', label: '時間なし' },
+    { value: '00:00', label: '0:00' },
+    { value: '00:30', label: '0:30' },
+    { value: '01:00', label: '1:00' },
+    { value: '01:30', label: '1:30' },
+    { value: '02:00', label: '2:00' },
+    { value: '02:30', label: '2:30' },
+    { value: '03:00', label: '3:00' },
+    { value: '03:30', label: '3:30' },
+    { value: '04:00', label: '4:00' },
+    { value: '04:30', label: '4:30' },
+    { value: '05:00', label: '5:00' },
+    { value: '05:30', label: '5:30' },
+    { value: '06:00', label: '6:00' },
+    { value: '06:30', label: '6:30' },
+    { value: '07:00', label: '7:00' },
+    { value: '07:30', label: '7:30' },
+    { value: '08:00', label: '8:00' },
+    { value: '08:30', label: '8:30' },
+    { value: '09:00', label: '9:00' },
+    { value: '09:30', label: '9:30' },
+    { value: '10:00', label: '10:00' },
+    { value: '10:30', label: '10:30' },
+    { value: '11:00', label: '11:00' },
+    { value: '11:30', label: '11:30' },
+    { value: '12:00', label: '12:00' },
+    { value: '12:30', label: '12:30' },
+    { value: '13:00', label: '13:00' },
+    { value: '13:30', label: '13:30' },
+    { value: '14:00', label: '14:00' },
+    { value: '14:30', label: '14:30' },
+    { value: '15:00', label: '15:00' },
+    { value: '15:30', label: '15:30' },
+    { value: '16:00', label: '16:00' },
+    { value: '16:30', label: '16:30' },
+    { value: '17:00', label: '17:00' },
+    { value: '17:30', label: '17:30' },
+    { value: '18:00', label: '18:00' },
+    { value: '18:30', label: '18:30' },
+    { value: '19:00', label: '19:00' },
+    { value: '19:30', label: '19:30' },
+    { value: '20:00', label: '20:00' },
+    { value: '20:30', label: '20:30' },
+    { value: '21:00', label: '21:00' },
+    { value: '21:30', label: '21:30' },
+    { value: '22:00', label: '22:00' },
+    { value: '22:30', label: '22:30' },
+    { value: '23:00', label: '23:00' },
+    { value: '23:30', label: '23:30' },
+  ]
+
   useEffect(() => {
     if ('Notification' in window) {
       setNotificationPermission(Notification.permission)
@@ -198,7 +250,7 @@ function App() {
   }
 
   const deleteTask = (id) => {
-    if (window.confirm('このタスクを削除しますか？')) {
+    if (window.confirm('このタスクを削除しますか?')) {
       setTasks(tasks.filter(task => task.id !== id))
       setMemos(memos.map(memo => memo.linkedTaskId === id ? { ...memo, linkedTaskId: null } : memo))
     }
@@ -342,7 +394,7 @@ function App() {
       alert('インボックスは削除できません')
       return
     }
-    if (window.confirm(`「${projectName}」を削除しますか？`)) {
+    if (window.confirm(`「${projectName}」を削除しますか?`)) {
       setTasks(tasks.map(task =>
         task.project === projectName ? { ...task, project: 'インボックス' } : task
       ))
@@ -367,7 +419,7 @@ function App() {
   }
 
   const deleteMemo = (id) => {
-    if (window.confirm('このメモを削除しますか？')) {
+    if (window.confirm('このメモを削除しますか?')) {
       setMemos(memos.filter(memo => memo.id !== id))
     }
   }
@@ -541,7 +593,7 @@ function App() {
         <div className="memo-view">
           <div className="memo-toolbar">
             <div className="color-picker">
-              <span>色：</span>
+              <span>色:</span>
               {memoColors.map(c => (
                 <button
                   key={c.value}
@@ -553,7 +605,7 @@ function App() {
               ))}
             </div>
             <div className="task-link">
-              <span>タスク：</span>
+              <span>タスク:</span>
               <select value={memoLinkTask} onChange={(e) => setMemoLinkTask(e.target.value)}>
                 <option value="">紐付けなし</option>
                 {tasks.filter(t => !t.done).map(task => (
@@ -602,9 +654,9 @@ function App() {
                         }}
                         title={memo.minimized ? '展開' : '折りたたみ'}
                       >
-                        {memo.minimized ? '＋' : '－'}
+                        {memo.minimized ? '+' : '-'}
                       </button>
-                      <button onClick={() => deleteMemo(memo.id)} title="削除">×</button>
+                      <button onClick={() => deleteMemo(memo.id)} title="削除">x</button>
                     </div>
                   </div>
                   <div className="sticky-content">
@@ -731,12 +783,15 @@ function App() {
                 <option value="低">🟢 低</option>
               </select>
               <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} />
-              <input 
-                type="time" 
+              <select 
                 value={selectedTime} 
                 onChange={(e) => setSelectedTime(e.target.value)}
-                className="time-input"
-              />
+                className="time-select"
+              >
+                {timeOptions.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
               <select value={selectedRepeat} onChange={(e) => setSelectedRepeat(e.target.value)} className="repeat-select">
                 <option value="none">繰り返しなし</option>
                 <option value="daily">毎日</option>
@@ -786,7 +841,7 @@ function App() {
                 {projects.map(p => (
                   <span key={p} className="project-chip">
                     {p}
-                    {p !== 'インボックス' && <button onClick={() => deleteProject(p)}>×</button>}
+                    {p !== 'インボックス' && <button onClick={() => deleteProject(p)}>x</button>}
                   </span>
                 ))}
               </div>
@@ -858,7 +913,7 @@ function App() {
                           />
                           <div className="edit-options">
                             <div className="edit-option">
-                              <label>📅 期限：</label>
+                              <label>📅 期限:</label>
                               <input
                                 type="date"
                                 value={editingDueDate}
@@ -876,13 +931,16 @@ function App() {
                               )}
                             </div>
                             <div className="edit-option">
-                              <label>⏰ 開始時間：</label>
-                              <input
-                                type="time"
+                              <label>⏰ 開始時間:</label>
+                              <select
                                 value={editingStartTime}
                                 onChange={(e) => setEditingStartTime(e.target.value)}
-                                className="edit-time-input"
-                              />
+                                className="edit-time-select"
+                              >
+                                {timeOptions.map(opt => (
+                                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                ))}
+                              </select>
                               {editingStartTime && (
                                 <button 
                                   type="button"
@@ -894,7 +952,7 @@ function App() {
                               )}
                             </div>
                             <div className="edit-option">
-                              <label>🔁 繰り返し：</label>
+                              <label>🔁 繰り返し:</label>
                               <select
                                 value={editingRepeat}
                                 onChange={(e) => setEditingRepeat(e.target.value)}
@@ -937,7 +995,7 @@ function App() {
                           <div key={sub.id} className={`subtask ${sub.done ? 'done' : ''}`}>
                             <input type="checkbox" checked={sub.done} onChange={() => toggleSubTask(task.id, sub.id)} />
                             <span>{sub.text}</span>
-                            <button onClick={() => deleteSubTask(task.id, sub.id)}>×</button>
+                            <button onClick={() => deleteSubTask(task.id, sub.id)}>x</button>
                           </div>
                         ))}
                         <div className="subtask-add">
@@ -966,4 +1024,3 @@ function App() {
 }
 
 export default App
-"" 
