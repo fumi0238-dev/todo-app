@@ -5,9 +5,19 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>my-todo</title>
+    <link rel="manifest" href="/todo-app/manifest.json">
+    <link rel="apple-touch-icon" href="/todo-app/icon-192.png">
+    <meta name="theme-color" content="#6366f1">
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/todo-app/sw.js');
+        });
+      }
+    </script>
   </body>
 </html>
