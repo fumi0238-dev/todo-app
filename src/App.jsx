@@ -718,7 +718,7 @@ function App() {
             <textarea
               value={inputDescription}
               onChange={(e) => setInputDescription(e.target.value)}
-              placeholder="詳細を入力（任意）..."
+              placeholder="詳細を入力(任意)..."
               className="description-input"
             />
             <div className="options-row">
