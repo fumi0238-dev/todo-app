@@ -19,6 +19,8 @@ function App() {
   const [selectedProject, setSelectedProject] = useState('インボックス')
   const [selectedPriority, setSelectedPriority] = useState('中')
   const [selectedDate, setSelectedDate] = useState('')
+  const [selectedTime, setSelectedTime] = useState('')
+  const [selectedRepeat, setSelectedRepeat] = useState('none')
   const [filterProject, setFilterProject] = useState('すべて')
   const [newProject, setNewProject] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -27,6 +29,9 @@ function App() {
   const [editingId, setEditingId] = useState(null)
   const [editingText, setEditingText] = useState('')
   const [editingDescription, setEditingDescription] = useState('')
+  const [editingDueDate, setEditingDueDate] = useState('')
+  const [editingStartTime, setEditingStartTime] = useState('')
+  const [editingRepeat, setEditingRepeat] = useState('none')
   const [subTaskInput, setSubTaskInput] = useState({})
   const [expandedTask, setExpandedTask] = useState(null)
   
@@ -40,7 +45,99 @@ function App() {
   const [memoLinkTask, setMemoLinkTask] = useState('')
   const [editingMemoId, setEditingMemoId] = useState(null)
   
+  // 通知関連
+  const [notificationPermission, setNotificationPermission] = useState('default')
+  const [notifiedTasks, setNotifiedTasks] = useState(() => {
+    const saved = localStorage.getItem('notifiedTasks')
+    return saved ? JSON.parse(saved) : []
+  })
+  
   const editingRef = useRef(null)
+
+  // 通知許可を確認・取得
+  useEffect(() => {
+    if ('Notification' in window) {
+      setNotificationPermission(Notification.permission)
+    }
+  }, [])
+
+  // 通知済みタスクを保存
+  useEffect(() => {
+    localStorage.setItem('notifiedTasks', JSON.stringify(notifiedTasks))
+  }, [notifiedTasks])
+
+  // 通知許可をリクエスト
+  const requestNotificationPermission = async () => {
+    if ('Notification' in window) {
+      const permission = await Notification.requestPermission()
+      setNotificationPermission(permission)
+      if (permission === 'granted') {
+        new Notification('通知が有効になりました', {
+          body: 'タスクの期限・開始時間をお知らせします',
+          icon: '/todo-app/icon-192.png'
+        })
+      }
+    }
+  }
+
+  // 通知を送信
+  const sendNotification = (title, body, taskId) => {
+    if (notificationPermission === 'granted' && !notifiedTasks.includes(taskId)) {
+      new Notification(title, {
+        body: body,
+        icon: '/todo-app/icon-192.png',
+        tag: `task-${taskId}`
+      })
+      setNotifiedTasks(prev => [...prev, taskId])
+    }
+  }
+
+  // 通知チェック（1分ごと）
+  useEffect(() => {
+    const checkNotifications = () => {
+      const now = new Date()
+      const currentDateStr = formatDate(now)
+      const currentTimeStr = now.toTimeString().slice(0, 5)
+      
+      tasks.forEach(task => {
+        if (task.done) return
+        
+        // 開始時間の通知
+        if (task.dueDate === currentDateStr && task.startTime) {
+          if (task.startTime === currentTimeStr) {
+            sendNotification(
+              '⏰ タスク開始時間',
+              task.text,
+              `start-${task.id}-${currentDateStr}`
+            )
+          }
+          // 15分前通知
+          const startDate = new Date(`${task.dueDate}T${task.startTime}`)
+          const diff = (startDate - now) / 1000 / 60
+          if (diff > 14 && diff <= 15) {
+            sendNotification(
+              '⏰ 15分後に開始',
+              task.text,
+              `start15-${task.id}-${currentDateStr}`
+            )
+          }
+        }
+        
+        // 期限日の通知（当日の朝9時）
+        if (task.dueDate === currentDateStr && currentTimeStr === '09:00') {
+          sendNotification(
+            '📅 今日が期限です',
+            task.text,
+            `due-${task.id}-${currentDateStr}`
+          )
+        }
+      })
+    }
+
+    const interval = setInterval(checkNotifications, 60000)
+    checkNotifications() // 初回実行
+    return () => clearInterval(interval)
+  }, [tasks, notificationPermission, notifiedTasks])
 
   useEffect(() => {
     localStorage.setItem('tasks', JSON.stringify(tasks))
@@ -62,7 +159,31 @@ function App() {
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [editingId, editingText, editingDescription])
+  }, [editingId, editingText, editingDescription, editingDueDate, editingStartTime, editingRepeat])
+
+  // 次の繰り返し日を計算
+  const getNextRepeatDate = (currentDate, repeatType) => {
+    const date = new Date(currentDate)
+    switch (repeatType) {
+      case 'daily':
+        date.setDate(date.getDate() + 1)
+        break
+      case 'weekly':
+        date.setDate(date.getDate() + 7)
+        break
+      case 'monthly':
+        date.setMonth(date.getMonth() + 1)
+        break
+      case 'weekdays':
+        do {
+          date.setDate(date.getDate() + 1)
+        } while (date.getDay() === 0 || date.getDay() === 6)
+        break
+      default:
+        return null
+    }
+    return formatDate(date)
+  }
 
   const addTask = () => {
     if (inputValue.trim() === '') return
@@ -74,6 +195,8 @@ function App() {
       project: selectedProject,
       priority: selectedPriority,
       dueDate: selectedDate,
+      startTime: selectedTime,
+      repeat: selectedRepeat,
       subTasks: [],
       createdAt: new Date().toISOString()
     }
@@ -81,6 +204,8 @@ function App() {
     setInputValue('')
     setInputDescription('')
     setSelectedDate('')
+    setSelectedTime('')
+    setSelectedRepeat('none')
   }
 
   const deleteTask = (id) => {
@@ -91,9 +216,31 @@ function App() {
   }
 
   const toggleTask = (id) => {
-    setTasks(tasks.map(task =>
-      task.id === id ? { ...task, done: !task.done } : task
-    ))
+    setTasks(tasks.map(task => {
+      if (task.id === id) {
+        const newDone = !task.done
+        
+        // 繰り返しタスクの場合、完了時に次のタスクを作成
+        if (newDone && task.repeat && task.repeat !== 'none' && task.dueDate) {
+          const nextDate = getNextRepeatDate(task.dueDate, task.repeat)
+          if (nextDate) {
+            const newTask = {
+              ...task,
+              id: Date.now(),
+              done: false,
+              dueDate: nextDate,
+              createdAt: new Date().toISOString()
+            }
+            setTimeout(() => {
+              setTasks(prev => [...prev, newTask])
+            }, 100)
+          }
+        }
+        
+        return { ...task, done: newDone }
+      }
+      return task
+    }))
   }
 
   const startEditing = (task) => {
@@ -103,29 +250,56 @@ function App() {
     setEditingId(task.id)
     setEditingText(task.text)
     setEditingDescription(task.description || '')
+    setEditingDueDate(task.dueDate || '')
+    setEditingStartTime(task.startTime || '')
+    setEditingRepeat(task.repeat || 'none')
     setExpandedTask(task.id)
   }
 
   const saveEditing = () => {
     if (editingId && editingText.trim() !== '') {
       setTasks(tasks.map(task =>
-        task.id === editingId ? { ...task, text: editingText, description: editingDescription } : task
+        task.id === editingId 
+          ? { 
+              ...task, 
+              text: editingText, 
+              description: editingDescription, 
+              dueDate: editingDueDate,
+              startTime: editingStartTime,
+              repeat: editingRepeat
+            } 
+          : task
       ))
     }
     setEditingId(null)
     setEditingText('')
     setEditingDescription('')
+    setEditingDueDate('')
+    setEditingStartTime('')
+    setEditingRepeat('none')
   }
 
   const saveEditingDirect = () => {
     if (editingId && editingText.trim() !== '') {
       setTasks(prev => prev.map(task =>
-        task.id === editingId ? { ...task, text: editingText, description: editingDescription } : task
+        task.id === editingId 
+          ? { 
+              ...task, 
+              text: editingText, 
+              description: editingDescription, 
+              dueDate: editingDueDate,
+              startTime: editingStartTime,
+              repeat: editingRepeat
+            } 
+          : task
       ))
     }
     setEditingId(null)
     setEditingText('')
     setEditingDescription('')
+    setEditingDueDate('')
+    setEditingStartTime('')
+    setEditingRepeat('none')
   }
 
   const addSubTask = (taskId) => {
@@ -191,19 +365,19 @@ function App() {
   }
 
   // メモ機能
-const addMemo = () => {
-  const newMemo = {
-    id: Date.now(),
-    title: '',
-    content: '',
-    color: memoColor,
-    linkedTaskId: memoLinkTask ? parseInt(memoLinkTask) : null,
-    minimized: false,
-    createdAt: new Date().toISOString()
+  const addMemo = () => {
+    const newMemo = {
+      id: Date.now(),
+      title: '',
+      content: '',
+      color: memoColor,
+      linkedTaskId: memoLinkTask ? parseInt(memoLinkTask) : null,
+      minimized: false,
+      createdAt: new Date().toISOString()
+    }
+    setMemos([...memos, newMemo])
+    setMemoLinkTask('')
   }
-  setMemos([...memos, newMemo])
-  setMemoLinkTask('')
-}
 
   const deleteMemo = (id) => {
     if (window.confirm('このメモを削除しますか？')) {
@@ -254,6 +428,21 @@ const addMemo = () => {
   
   const formatDisplayDate = (date) => {
     return date.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })
+  }
+
+  const formatTime = (time) => {
+    if (!time) return ''
+    return time
+  }
+
+  const getRepeatLabel = (repeat) => {
+    switch (repeat) {
+      case 'daily': return '毎日'
+      case 'weekly': return '毎週'
+      case 'monthly': return '毎月'
+      case 'weekdays': return '平日'
+      default: return ''
+    }
   }
 
   const getWeekDates = (date) => {
@@ -368,6 +557,8 @@ const addMemo = () => {
       <input type="checkbox" checked={task.done} onChange={() => toggleTask(task.id)} />
       <span className="priority-dot" style={{ background: getPriorityColor(task.priority) }} />
       <span className="task-text">{task.text}</span>
+      {task.startTime && <span className="task-time">{task.startTime}</span>}
+      {task.repeat && task.repeat !== 'none' && <span className="repeat-icon">🔁</span>}
       {!compact && <button className="delete-btn" onClick={() => deleteTask(task.id)}>🗑️</button>}
     </div>
   )
@@ -376,6 +567,16 @@ const addMemo = () => {
     <div className="app">
       <header className="app-header">
         <h1>📝 Todoリスト</h1>
+        <div className="header-actions">
+          {notificationPermission !== 'granted' && (
+            <button className="notification-btn" onClick={requestNotificationPermission}>
+              🔔 通知を有効にする
+            </button>
+          )}
+          {notificationPermission === 'granted' && (
+            <span className="notification-status">🔔 通知ON</span>
+          )}
+        </div>
         <div className="view-switcher">
           <button className={viewMode === 'list' ? 'active' : ''} onClick={() => setViewMode('list')}>リスト</button>
           <button className={viewMode === 'memo' ? 'active' : ''} onClick={() => setViewMode('memo')}>メモ</button>
@@ -385,105 +586,105 @@ const addMemo = () => {
         </div>
       </header>
 
-{/* メモビュー */}
-{viewMode === 'memo' && (
-  <div className="memo-view">
-    <div className="memo-toolbar">
-      <div className="color-picker">
-        <span>色：</span>
-        {memoColors.map(c => (
-          <button
-            key={c.value}
-            className={`color-btn ${memoColor === c.value ? 'active' : ''}`}
-            style={{ background: c.value }}
-            onClick={() => setMemoColor(c.value)}
-            title={c.name}
-          />
-        ))}
-      </div>
-      <div className="task-link">
-        <span>タスク：</span>
-        <select value={memoLinkTask} onChange={(e) => setMemoLinkTask(e.target.value)}>
-          <option value="">紐付けなし</option>
-          {tasks.filter(t => !t.done).map(task => (
-            <option key={task.id} value={task.id}>{task.text}</option>
-          ))}
-        </select>
-      </div>
-      <button onClick={addMemo} className="add-sticky-btn">+ 新しい付箋</button>
-    </div>
-
-    <div className="sticky-container">
-      {memos.map(memo => {
-        const linkedTask = memo.linkedTaskId ? getLinkedTask(memo.linkedTaskId) : null
-        const colorClass = memoColors.find(c => c.value === memo.color)?.name || 'yellow'
-        const colorMap = {
-          '黄色': 'yellow',
-          'ピンク': 'pink',
-          '青': 'blue',
-          '緑': 'green',
-          '紫': 'purple',
-          'オレンジ': 'orange'
-        }
-        return (
-          <div 
-            key={memo.id} 
-            className={`sticky-note ${colorMap[colorClass] || 'yellow'} ${memo.minimized ? 'minimized' : ''}`}
-          >
-            <div className="sticky-header">
-              <input
-                type="text"
-                className="sticky-title"
-                value={memo.title}
-                onChange={(e) => {
-                  setMemos(memos.map(m => 
-                    m.id === memo.id ? { ...m, title: e.target.value } : m
-                  ))
-                }}
-                placeholder="タイトル..."
-              />
-              <div className="sticky-actions">
-                <button 
-                  onClick={() => {
-                    setMemos(memos.map(m => 
-                      m.id === memo.id ? { ...m, minimized: !m.minimized } : m
-                    ))
-                  }}
-                  title={memo.minimized ? '展開' : '折りたたみ'}
-                >
-                  {memo.minimized ? '＋' : '－'}
-                </button>
-                <button onClick={() => deleteMemo(memo.id)} title="削除">×</button>
-              </div>
+      {/* メモビュー */}
+      {viewMode === 'memo' && (
+        <div className="memo-view">
+          <div className="memo-toolbar">
+            <div className="color-picker">
+              <span>色：</span>
+              {memoColors.map(c => (
+                <button
+                  key={c.value}
+                  className={`color-btn ${memoColor === c.value ? 'active' : ''}`}
+                  style={{ background: c.value }}
+                  onClick={() => setMemoColor(c.value)}
+                  title={c.name}
+                />
+              ))}
             </div>
-            <div className="sticky-content">
-              <textarea
-                className="sticky-textarea"
-                value={memo.content}
-                onChange={(e) => {
-                  setMemos(memos.map(m => 
-                    m.id === memo.id ? { ...m, content: e.target.value } : m
-                  ))
-                }}
-                placeholder="メモを入力..."
-              />
+            <div className="task-link">
+              <span>タスク：</span>
+              <select value={memoLinkTask} onChange={(e) => setMemoLinkTask(e.target.value)}>
+                <option value="">紐付けなし</option>
+                {tasks.filter(t => !t.done).map(task => (
+                  <option key={task.id} value={task.id}>{task.text}</option>
+                ))}
+              </select>
             </div>
-            {linkedTask && (
-              <div className="sticky-footer">
-                <span>🔗</span>
-                <span className="sticky-link">{linkedTask.text}</span>
-              </div>
-            )}
+            <button onClick={addMemo} className="add-sticky-btn">+ 新しい付箋</button>
           </div>
-        )
-      })}
-    </div>
 
-    {memos.length === 0 && (
-      <p className="empty">「+ 新しい付箋」をクリックしてメモを追加</p>
-    )}
-  </div>
-)}
+          <div className="sticky-container">
+            {memos.map(memo => {
+              const linkedTask = memo.linkedTaskId ? getLinkedTask(memo.linkedTaskId) : null
+              const colorClass = memoColors.find(c => c.value === memo.color)?.name || 'yellow'
+              const colorMap = {
+                '黄色': 'yellow',
+                'ピンク': 'pink',
+                '青': 'blue',
+                '緑': 'green',
+                '紫': 'purple',
+                'オレンジ': 'orange'
+              }
+              return (
+                <div 
+                  key={memo.id} 
+                  className={`sticky-note ${colorMap[colorClass] || 'yellow'} ${memo.minimized ? 'minimized' : ''}`}
+                >
+                  <div className="sticky-header">
+                    <input
+                      type="text"
+                      className="sticky-title"
+                      value={memo.title}
+                      onChange={(e) => {
+                        setMemos(memos.map(m => 
+                          m.id === memo.id ? { ...m, title: e.target.value } : m
+                        ))
+                      }}
+                      placeholder="タイトル..."
+                    />
+                    <div className="sticky-actions">
+                      <button 
+                        onClick={() => {
+                          setMemos(memos.map(m => 
+                            m.id === memo.id ? { ...m, minimized: !m.minimized } : m
+                          ))
+                        }}
+                        title={memo.minimized ? '展開' : '折りたたみ'}
+                      >
+                        {memo.minimized ? '＋' : '－'}
+                      </button>
+                      <button onClick={() => deleteMemo(memo.id)} title="削除">×</button>
+                    </div>
+                  </div>
+                  <div className="sticky-content">
+                    <textarea
+                      className="sticky-textarea"
+                      value={memo.content}
+                      onChange={(e) => {
+                        setMemos(memos.map(m => 
+                          m.id === memo.id ? { ...m, content: e.target.value } : m
+                        ))
+                      }}
+                      placeholder="メモを入力..."
+                    />
+                  </div>
+                  {linkedTask && (
+                    <div className="sticky-footer">
+                      <span>🔗</span>
+                      <span className="sticky-link">{linkedTask.text}</span>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {memos.length === 0 && (
+            <p className="empty">「+ 新しい付箋」をクリックしてメモを追加</p>
+          )}
+        </div>
+      )}
 
       {/* カレンダーナビゲーション */}
       {(viewMode === 'day' || viewMode === 'week' || viewMode === 'month') && (
@@ -539,6 +740,7 @@ const addMemo = () => {
                 <div className="month-day-tasks">
                   {getTasksForDate(date).slice(0, 3).map(task => (
                     <div key={task.id} className={`month-task ${task.done ? 'done' : ''}`} style={{ borderLeftColor: getPriorityColor(task.priority) }}>
+                      {task.startTime && <span className="month-task-time">{task.startTime}</span>}
                       {task.text}
                     </div>
                   ))}
@@ -580,6 +782,19 @@ const addMemo = () => {
                 <option value="低">🟢 低</option>
               </select>
               <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} />
+              <input 
+                type="time" 
+                value={selectedTime} 
+                onChange={(e) => setSelectedTime(e.target.value)}
+                className="time-input"
+              />
+              <select value={selectedRepeat} onChange={(e) => setSelectedRepeat(e.target.value)} className="repeat-select">
+                <option value="none">繰り返しなし</option>
+                <option value="daily">毎日</option>
+                <option value="weekly">毎週</option>
+                <option value="monthly">毎月</option>
+                <option value="weekdays">平日のみ</option>
+              </select>
             </div>
           </div>
 
@@ -660,6 +875,12 @@ const addMemo = () => {
                       {linkedMemos.length > 0 && (
                         <span className="memo-badge">📌 {linkedMemos.length}</span>
                       )}
+                      {task.repeat && task.repeat !== 'none' && (
+                        <span className="repeat-badge">🔁 {getRepeatLabel(task.repeat)}</span>
+                      )}
+                      {task.startTime && (
+                        <span className="time-badge">⏰ {task.startTime}</span>
+                      )}
                       <span className="project-tag">{task.project}</span>
                       {task.dueDate && <span className="due-date">{task.dueDate}</span>}
                     </div>
@@ -686,9 +907,67 @@ const addMemo = () => {
                             placeholder="詳細を入力..."
                             className="edit-description"
                           />
+                          <div className="edit-options">
+                            <div className="edit-option">
+                              <label>📅 期限：</label>
+                              <input
+                                type="date"
+                                value={editingDueDate}
+                                onChange={(e) => setEditingDueDate(e.target.value)}
+                                className="edit-date-input"
+                              />
+                              {editingDueDate && (
+                                <button 
+                                  type="button"
+                                  className="clear-btn"
+                                  onClick={() => setEditingDueDate('')}
+                                >
+                                  クリア
+                                </button>
+                              )}
+                            </div>
+                            <div className="edit-option">
+                              <label>⏰ 開始時間：</label>
+                              <input
+                                type="time"
+                                value={editingStartTime}
+                                onChange={(e) => setEditingStartTime(e.target.value)}
+                                className="edit-time-input"
+                              />
+                              {editingStartTime && (
+                                <button 
+                                  type="button"
+                                  className="clear-btn"
+                                  onClick={() => setEditingStartTime('')}
+                                >
+                                  クリア
+                                </button>
+                              )}
+                            </div>
+                            <div className="edit-option">
+                              <label>🔁 繰り返し：</label>
+                              <select
+                                value={editingRepeat}
+                                onChange={(e) => setEditingRepeat(e.target.value)}
+                                className="edit-repeat-select"
+                              >
+                                <option value="none">なし</option>
+                                <option value="daily">毎日</option>
+                                <option value="weekly">毎週</option>
+                                <option value="monthly">毎月</option>
+                                <option value="weekdays">平日のみ</option>
+                              </select>
+                            </div>
+                          </div>
                         </>
                       ) : (
-                        <p className="description">{task.description || '詳細なし'}</p>
+                        <>
+                          <p className="description">{task.description || '詳細なし'}</p>
+                          <div className="task-info">
+                            {task.startTime && <span>⏰ 開始: {task.startTime}</span>}
+                            {task.repeat && task.repeat !== 'none' && <span>🔁 {getRepeatLabel(task.repeat)}</span>}
+                          </div>
+                        </>
                       )}
 
                       {/* 紐付けられたメモ */}

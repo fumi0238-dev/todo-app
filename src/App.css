@@ -36,6 +36,8 @@
   margin-bottom: 16px;
   padding-bottom: 12px;
   border-bottom: 2px solid var(--gray-100);
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .app-header h1 {
@@ -43,6 +45,38 @@
   font-weight: 700;
   color: var(--gray-900);
   margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.notification-btn {
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--warning);
+  color: var(--white);
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.notification-btn:hover {
+  background: #d97706;
+  transform: translateY(-1px);
+}
+
+.notification-status {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #d1fae5;
+  color: #059669;
+  border-radius: var(--radius);
 }
 
 .view-switcher {
@@ -156,6 +190,16 @@
   font-size: 11px;
 }
 
+.task-time {
+  font-size: 11px;
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.repeat-icon {
+  font-size: 12px;
+}
+
 .week-view {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -253,6 +297,12 @@
   text-overflow: ellipsis;
 }
 
+.month-task-time {
+  color: var(--primary);
+  font-weight: 600;
+  margin-right: 4px;
+}
+
 .more-tasks {
   font-size: 9px;
   color: var(--primary);
@@ -337,6 +387,14 @@
   border: 2px solid var(--gray-200);
   border-radius: var(--radius);
   background: var(--white);
+}
+
+.time-input {
+  width: 110px;
+}
+
+.repeat-select {
+  min-width: 120px;
 }
 
 .controls-section {
@@ -512,6 +570,7 @@
   gap: 6px;
   margin-left: auto;
   margin-right: 8px;
+  flex-wrap: wrap;
 }
 
 .subtask-badge {
@@ -526,6 +585,24 @@
 .subtask-badge.complete {
   background: #d1fae5;
   color: #059669;
+}
+
+.repeat-badge {
+  background: #fef3c7;
+  color: #92400e;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.time-badge {
+  background: #dbeafe;
+  color: #1d4ed8;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .project-tag {
@@ -577,6 +654,14 @@
   white-space: pre-wrap;
 }
 
+.task-info {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--gray-500);
+  margin-bottom: 10px;
+}
+
 .edit-title {
   width: 100%;
   padding: 10px 12px;
@@ -604,6 +689,75 @@
 
 .edit-description:focus {
   outline: none;
+}
+
+/* 編集オプション */
+.edit-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.edit-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--white);
+  border: 2px solid var(--gray-200);
+  border-radius: var(--radius);
+}
+
+.edit-option label {
+  color: var(--gray-700);
+  font-size: 13px;
+  font-weight: 600;
+  min-width: 100px;
+}
+
+.edit-date-input,
+.edit-time-input {
+  padding: 8px 12px;
+  border: 2px solid var(--primary);
+  border-radius: var(--radius);
+  background: var(--white);
+  color: var(--gray-900);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.edit-date-input:focus,
+.edit-time-input:focus {
+  outline: none;
+  border-color: var(--primary-dark);
+}
+
+.edit-repeat-select {
+  padding: 8px 12px;
+  border: 2px solid var(--primary);
+  border-radius: var(--radius);
+  background: var(--white);
+  color: var(--gray-900);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.clear-btn {
+  padding: 6px 12px;
+  background: var(--gray-100);
+  color: var(--danger);
+  border: 2px solid var(--gray-200);
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.15s;
+}
+
+.clear-btn:hover {
+  background: #fef2f2;
+  border-color: var(--danger);
 }
 
 .subtasks {
@@ -976,10 +1130,4 @@
   margin: 0;
   color: rgba(0,0,0,0.65);
   font-size: 12px;
-}
-
-.empty {
-  text-align: center;
-  color: var(--gray-500);
-  padding: 40px;
 }
