@@ -38,14 +38,12 @@ function App() {
   const [viewMode, setViewMode] = useState('list')
   const [currentDate, setCurrentDate] = useState(new Date())
   
-  // メモ関連
   const [memoTitle, setMemoTitle] = useState('')
   const [memoContent, setMemoContent] = useState('')
   const [memoColor, setMemoColor] = useState('#fef3c7')
   const [memoLinkTask, setMemoLinkTask] = useState('')
   const [editingMemoId, setEditingMemoId] = useState(null)
   
-  // 通知関連
   const [notificationPermission, setNotificationPermission] = useState('default')
   const [notifiedTasks, setNotifiedTasks] = useState(() => {
     const saved = localStorage.getItem('notifiedTasks')
@@ -54,19 +52,16 @@ function App() {
   
   const editingRef = useRef(null)
 
-  // 通知許可を確認・取得
   useEffect(() => {
     if ('Notification' in window) {
       setNotificationPermission(Notification.permission)
     }
   }, [])
 
-  // 通知済みタスクを保存
   useEffect(() => {
     localStorage.setItem('notifiedTasks', JSON.stringify(notifiedTasks))
   }, [notifiedTasks])
 
-  // 通知許可をリクエスト
   const requestNotificationPermission = async () => {
     if ('Notification' in window) {
       const permission = await Notification.requestPermission()
@@ -80,7 +75,6 @@ function App() {
     }
   }
 
-  // 通知を送信
   const sendNotification = (title, body, taskId) => {
     if (notificationPermission === 'granted' && !notifiedTasks.includes(taskId)) {
       new Notification(title, {
@@ -92,7 +86,6 @@ function App() {
     }
   }
 
-  // 通知チェック（1分ごと）
   useEffect(() => {
     const checkNotifications = () => {
       const now = new Date()
@@ -102,7 +95,6 @@ function App() {
       tasks.forEach(task => {
         if (task.done) return
         
-        // 開始時間の通知
         if (task.dueDate === currentDateStr && task.startTime) {
           if (task.startTime === currentTimeStr) {
             sendNotification(
@@ -111,7 +103,6 @@ function App() {
               `start-${task.id}-${currentDateStr}`
             )
           }
-          // 15分前通知
           const startDate = new Date(`${task.dueDate}T${task.startTime}`)
           const diff = (startDate - now) / 1000 / 60
           if (diff > 14 && diff <= 15) {
@@ -123,7 +114,6 @@ function App() {
           }
         }
         
-        // 期限日の通知（当日の朝9時）
         if (task.dueDate === currentDateStr && currentTimeStr === '09:00') {
           sendNotification(
             '📅 今日が期限です',
@@ -135,7 +125,7 @@ function App() {
     }
 
     const interval = setInterval(checkNotifications, 60000)
-    checkNotifications() // 初回実行
+    checkNotifications()
     return () => clearInterval(interval)
   }, [tasks, notificationPermission, notifiedTasks])
 
@@ -161,7 +151,6 @@ function App() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [editingId, editingText, editingDescription, editingDueDate, editingStartTime, editingRepeat])
 
-  // 次の繰り返し日を計算
   const getNextRepeatDate = (currentDate, repeatType) => {
     const date = new Date(currentDate)
     switch (repeatType) {
@@ -220,7 +209,6 @@ function App() {
       if (task.id === id) {
         const newDone = !task.done
         
-        // 繰り返しタスクの場合、完了時に次のタスクを作成
         if (newDone && task.repeat && task.repeat !== 'none' && task.dueDate) {
           const nextDate = getNextRepeatDate(task.dueDate, task.repeat)
           if (nextDate) {
@@ -364,7 +352,6 @@ function App() {
     }
   }
 
-  // メモ機能
   const addMemo = () => {
     const newMemo = {
       id: Date.now(),
@@ -385,37 +372,6 @@ function App() {
     }
   }
 
-  const startEditingMemo = (memo) => {
-    setEditingMemoId(memo.id)
-    setMemoTitle(memo.title)
-    setMemoContent(memo.content)
-    setMemoColor(memo.color)
-    setMemoLinkTask(memo.linkedTaskId ? memo.linkedTaskId.toString() : '')
-  }
-
-  const saveMemo = () => {
-    if (editingMemoId) {
-      setMemos(memos.map(memo =>
-        memo.id === editingMemoId
-          ? { ...memo, title: memoTitle, content: memoContent, color: memoColor, linkedTaskId: memoLinkTask ? parseInt(memoLinkTask) : null }
-          : memo
-      ))
-      setEditingMemoId(null)
-    }
-    setMemoTitle('')
-    setMemoContent('')
-    setMemoColor('#fef3c7')
-    setMemoLinkTask('')
-  }
-
-  const cancelMemoEdit = () => {
-    setEditingMemoId(null)
-    setMemoTitle('')
-    setMemoContent('')
-    setMemoColor('#fef3c7')
-    setMemoLinkTask('')
-  }
-
   const getLinkedMemos = (taskId) => {
     return memos.filter(memo => memo.linkedTaskId === taskId)
   }
@@ -428,11 +384,6 @@ function App() {
   
   const formatDisplayDate = (date) => {
     return date.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })
-  }
-
-  const formatTime = (time) => {
-    if (!time) return ''
-    return time
   }
 
   const getRepeatLabel = (repeat) => {
@@ -586,7 +537,6 @@ function App() {
         </div>
       </header>
 
-      {/* メモビュー */}
       {viewMode === 'memo' && (
         <div className="memo-view">
           <div className="memo-toolbar">
@@ -686,7 +636,6 @@ function App() {
         </div>
       )}
 
-      {/* カレンダーナビゲーション */}
       {(viewMode === 'day' || viewMode === 'week' || viewMode === 'month') && (
         <div className="calendar-nav">
           <button onClick={() => navigateDate(-1)}>◀</button>
@@ -970,7 +919,6 @@ function App() {
                         </>
                       )}
 
-                      {/* 紐付けられたメモ */}
                       {linkedMemos.length > 0 && (
                         <div className="linked-memos">
                           <div className="linked-memos-header">📌 関連メモ</div>

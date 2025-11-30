@@ -670,6 +670,7 @@
   border: 2px solid var(--primary);
   border-radius: var(--radius);
   margin-bottom: 8px;
+  box-sizing: border-box;
 }
 
 .edit-title:focus {
@@ -685,13 +686,13 @@
   resize: vertical;
   min-height: 60px;
   margin-bottom: 10px;
+  box-sizing: border-box;
 }
 
 .edit-description:focus {
   outline: none;
 }
 
-/* 編集オプション */
 .edit-options {
   display: flex;
   flex-direction: column;
@@ -1064,7 +1065,6 @@
   white-space: nowrap;
 }
 
-/* 付箋の色バリエーション */
 .sticky-note.yellow {
   background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
 }
@@ -1089,7 +1089,6 @@
   background: linear-gradient(135deg, #ffedd5 0%, #fed7aa 100%);
 }
 
-/* タスク内のメモ表示 */
 .memo-badge {
   background: #fef3c7;
   color: #92400e;
